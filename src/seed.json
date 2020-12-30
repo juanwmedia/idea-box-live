@@ -1,0 +1,29 @@
+{
+    "ideas": [
+        {
+            "name": "Idea name 1",
+            "userName": "Username 1",
+            "votes": 99
+        },
+        {
+            "name": "Idea name 2",
+            "userName": "Username 2",
+            "votes": 89
+        },
+        {
+            "name": "Idea name 3",
+            "userName": "Username 3",
+            "votes": 79
+        },
+        {
+            "name": "Idea name 4",
+            "userName": "Username 4",
+            "votes": 69
+        },
+        {
+            "name": "Idea name 5",
+            "userName": "Username 5",
+            "votes": 59
+        }
+    ]
+}
