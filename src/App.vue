@@ -15,7 +15,12 @@
       <!-- End of Add Idea -->
 
       <!-- Idea item -->
-      <AppIdea v-for="(idea, $index) in ideas" :key="$index" :idea="idea" />
+      <AppIdea
+        v-for="(idea, $index) in ideas"
+        :key="$index"
+        :idea="idea"
+        @vote-idea="voteIdea"
+      />
       <!-- End of Idea item -->
     </div>
     <!-- End of main box -->
@@ -36,24 +41,26 @@ export default {
     let user = ref(null);
     auth.onAuthStateChanged(async auth => (user.value = auth ? auth : null));
 
-    db.collection("ideas").onSnapshot(
-      snapshot => {
-        const newIdeas = [];
-        snapshot.docs.forEach(doc => {
-          let { name, user, userName, votes } = doc.data();
-          let id = doc.id;
-          newIdeas.push({
-            name,
-            user,
-            userName,
-            votes,
-            id
+    db.collection("ideas")
+      .orderBy("votes", "desc")
+      .onSnapshot(
+        snapshot => {
+          const newIdeas = [];
+          snapshot.docs.forEach(doc => {
+            let { name, user, userName, votes } = doc.data();
+            let id = doc.id;
+            newIdeas.push({
+              name,
+              user,
+              userName,
+              votes,
+              id
+            });
           });
-        });
-        ideas.value = newIdeas;
-      },
-      error => console.error(error)
-    );
+          ideas.value = newIdeas;
+        },
+        error => console.error(error)
+      );
 
     const doLogin = async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
@@ -85,7 +92,20 @@ export default {
       }
     };
 
-    return { ideas, user, doLogin, doLogout, addIdea };
+    const voteIdea = async ({ id, type }) => {
+      try {
+        await db
+          .collection("ideas")
+          .doc(id)
+          .update({
+            votes: firebase.firestore.FieldValue.increment(type ? 1 : -1)
+          });
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    return { ideas, user, doLogin, doLogout, addIdea, voteIdea };
   },
   components: {
     AppIdea,

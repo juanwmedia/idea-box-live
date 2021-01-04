@@ -18,11 +18,13 @@
       </h3>
       <nav class="flex justify-center sm:block">
         <img
+          @click="voteIdea(true)"
           class="w-10 cursor-pointer"
           src="@/assets/img/arrow.svg"
           alt="Vote up"
         />
         <img
+          @click="voteIdea(false)"
           class="w-10 cursor-pointer transform rotate-180"
           src="@/assets/img/arrow.svg"
           alt="Vote down"
@@ -35,11 +37,16 @@
 <script>
 export default {
   name: "AppIdea",
+  emits: ["vote-idea"],
   props: {
     idea: {
       type: Object,
       required: true
     }
+  },
+  setup(props, { emit }) {
+    const voteIdea = type => emit("vote-idea", { type, id: props.idea.id });
+    return { voteIdea };
   }
 };
 </script>
