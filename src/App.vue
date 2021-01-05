@@ -15,13 +15,16 @@
       <!-- End of Add Idea -->
 
       <!-- Idea item -->
-      <AppIdea
-        v-for="(idea, $index) in ideas"
-        :key="$index"
-        :idea="idea"
-        :user="user"
-        @vote-idea="voteIdea"
-      />
+      <transition-group name="list-complete">
+        <AppIdea
+          v-for="idea in ideas"
+          :key="idea.createdAt"
+          :idea="idea"
+          :user="user"
+          @vote-idea="voteIdea"
+          class="idea"
+        />
+      </transition-group>
       <!-- End of Idea item -->
     </div>
     <!-- End of main box -->
@@ -67,12 +70,13 @@ export default {
         snapshot => {
           const newIdeas = [];
           snapshot.docs.forEach(doc => {
-            let { name, user, userName, votes } = doc.data();
+            let { name, user, userName, votes, createdAt } = doc.data();
             let id = doc.id;
             newIdeas.push({
               name,
               user,
               userName,
+              createdAt,
               votes,
               id
             });
@@ -105,6 +109,7 @@ export default {
           name: data.value,
           user: user.value.uid,
           userName: user.value.displayName,
+          createdAt: Date.now(),
           votes: 0
         });
       } catch (error) {
@@ -114,16 +119,16 @@ export default {
 
     const voteIdea = async ({ id, type }) => {
       try {
-        let votes = await db
-          .collection("votes")
-          .doc(user.value.uid)
-          .get();
+        // let votes = await db
+        //   .collection("votes")
+        //   .doc(user.value.uid)
+        //   .get();
 
-        if (votes.exists) {
-          votes = votes.data().ideas;
-          if (votes.find(vote => vote === id))
-            throw new Error("User already voted!");
-        }
+        // if (votes.exists) {
+        //   votes = votes.data().ideas;
+        //   if (votes.find(vote => vote === id))
+        //     throw new Error("User already voted!");
+        // }
 
         await db
           .collection("ideas")
@@ -156,6 +161,42 @@ export default {
 </script>
 
 <style>
+.idea {
+  transition: all 0.8s ease;
+}
+
+.list-complete-enter-from,
+.list-complete-leave-to {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.list-complete-leave-active {
+  position: absolute;
+}
+
+.list-complete-move {
+  transition: transform 0.3s ease;
+}
+
+.idea {
+  @apply bg-gray-200;
+}
+.idea:nth-of-type(1) {
+  @apply bg-red-500;
+}
+.idea:nth-of-type(2) {
+  @apply bg-red-400;
+}
+.idea:nth-of-type(3) {
+  @apply bg-red-300;
+}
+.idea:nth-of-type(4) {
+  @apply bg-red-200;
+}
+.idea:nth-of-type(5) {
+  @apply bg-red-100;
+}
 .user-actions {
   @apply mt-2 text-center;
 }
