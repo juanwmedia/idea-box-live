@@ -19,6 +19,7 @@
         v-for="(idea, $index) in ideas"
         :key="$index"
         :idea="idea"
+        :user="user"
         @vote-idea="voteIdea"
       />
       <!-- End of Idea item -->
@@ -39,7 +40,26 @@ export default {
     const ideas = ref([]);
 
     let user = ref(null);
-    auth.onAuthStateChanged(async auth => (user.value = auth ? auth : null));
+    auth.onAuthStateChanged(async auth => {
+      let userVotes;
+      if (auth) {
+        user.value = auth;
+        userVotes = db
+          .collection("votes")
+          .doc(user.value.uid)
+          .onSnapshot(doc => {
+            if (doc.exists) {
+              let document = doc.data();
+              if ("ideas" in document) {
+                user.value.votes = document.ideas;
+              }
+            }
+          });
+      } else {
+        user.value = null;
+        userVotes && userVotes();
+      }
+    });
 
     db.collection("ideas")
       .orderBy("votes", "desc")
@@ -94,12 +114,33 @@ export default {
 
     const voteIdea = async ({ id, type }) => {
       try {
+        let votes = await db
+          .collection("votes")
+          .doc(user.value.uid)
+          .get();
+
+        if (votes.exists) {
+          votes = votes.data().ideas;
+          if (votes.find(vote => vote === id))
+            throw new Error("User already voted!");
+        }
+
         await db
           .collection("ideas")
           .doc(id)
           .update({
             votes: firebase.firestore.FieldValue.increment(type ? 1 : -1)
           });
+
+        await db
+          .collection("votes")
+          .doc(user.value.uid)
+          .set(
+            {
+              ideas: firebase.firestore.FieldValue.arrayUnion(id)
+            },
+            { merge: true }
+          );
       } catch (error) {
         console.error(error);
       }
