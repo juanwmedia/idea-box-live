@@ -1,6 +1,16 @@
 <template>
   <!-- Main container -->
   <div class="container mx-auto p-4">
+    <!-- Remove Idea Modal -->
+    <teleport to="body">
+      <RemoveIdea
+        v-if="isModalActive"
+        :name="ideaToRemove.name"
+        @remove-ok="removeIdea"
+        @remove-cancel="isModalActive = !isModalActive"
+      />
+    </teleport>
+
     <!-- Main box -->
     <div class="w-full bg-gray-100 shadow-lg p-4 rounded-lg">
       <h1 class="mb-5 text-4xl text-center">IdeaBox</h1>
@@ -22,6 +32,7 @@
           :idea="idea"
           :user="user"
           @vote-idea="voteIdea"
+          @remove-idea="showRemoveIdeaModal"
           class="idea"
         />
       </transition-group>
@@ -35,13 +46,15 @@
 <script>
 import AppIdea from "@/components/AppIdea.vue";
 import AddIdea from "@/components/AddIdea.vue";
-import { ref } from "vue";
 import { auth, db, firebase } from "@/firebase.js";
+import { ref, defineAsyncComponent } from "vue";
+const RemoveIdea = defineAsyncComponent(() =>
+  import("@/components/RemoveIdea.vue")
+);
 export default {
   name: "App",
   setup() {
-    const ideas = ref([]);
-
+    // User
     let user = ref(null);
     auth.onAuthStateChanged(async auth => {
       let userVotes;
@@ -63,6 +76,30 @@ export default {
         userVotes && userVotes();
       }
     });
+
+    const doLogin = async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await auth.signInWithPopup(provider);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const doLogout = async () => {
+      try {
+        await auth.signOut();
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    // Ideas
+    const ideas = ref([]);
+
+    const isModalActive = ref(false);
+
+    let ideaToRemove = {};
 
     db.collection("ideas")
       .orderBy("votes", "desc")
@@ -86,23 +123,6 @@ export default {
         error => console.error(error)
       );
 
-    const doLogin = async () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try {
-        await auth.signInWithPopup(provider);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    const doLogout = async () => {
-      try {
-        await auth.signOut();
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
     const addIdea = async data => {
       try {
         await db.collection("ideas").add({
@@ -119,16 +139,16 @@ export default {
 
     const voteIdea = async ({ id, type }) => {
       try {
-        // let votes = await db
-        //   .collection("votes")
-        //   .doc(user.value.uid)
-        //   .get();
+        let votes = await db
+          .collection("votes")
+          .doc(user.value.uid)
+          .get();
 
-        // if (votes.exists) {
-        //   votes = votes.data().ideas;
-        //   if (votes.find(vote => vote === id))
-        //     throw new Error("User already voted!");
-        // }
+        if (votes.exists) {
+          votes = votes.data().ideas;
+          if (votes.find(vote => vote === id))
+            throw new Error("User already voted!");
+        }
 
         await db
           .collection("ideas")
@@ -151,11 +171,42 @@ export default {
       }
     };
 
-    return { ideas, user, doLogin, doLogout, addIdea, voteIdea };
+    const showRemoveIdeaModal = ({ name, id }) => {
+      ideaToRemove.name = name;
+      ideaToRemove.id = id;
+      isModalActive.value = true;
+    };
+
+    const removeIdea = async () => {
+      try {
+        await db
+          .collection("ideas")
+          .doc(ideaToRemove.id)
+          .delete();
+        ideaToRemove = {};
+        isModalActive.value = false;
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    return {
+      ideas,
+      user,
+      doLogin,
+      doLogout,
+      addIdea,
+      voteIdea,
+      isModalActive,
+      ideaToRemove,
+      showRemoveIdeaModal,
+      removeIdea
+    };
   },
   components: {
     AppIdea,
-    AddIdea
+    AddIdea,
+    RemoveIdea
   }
 };
 </script>
